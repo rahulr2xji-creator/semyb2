@@ -107,6 +107,7 @@ async def _start(source: str):
             "success": True,
             "status": "done",
             "source": source,
+            "job_id": "cached",
             "took": 0,
             "bypassed": cached["bypassed"],
             "cached": True,
@@ -138,7 +139,7 @@ async def info():
         "name": "Bypass API",
         "version": "2.1.0",
         "supported": SUPPORTED,
-        "endpoints": ["/semybypass?url=],
+        "endpoints": ["/health", "/bypass"],
     }
 
 
@@ -147,7 +148,7 @@ async def health():
     return {"ok": True}
 
 
-@app.get("/semybypass")
+@app.get("/bypass")
 async def bypass_get(
     url: str | None = Query(default=None),
     bypass: str | None = None,
@@ -177,7 +178,7 @@ async def api_alias(
     return await _start(_normalize(value))
 
 
-@app.post("/semybypass")
+@app.post("/bypass")
 async def bypass_post(body: BypassBody):
     key_error = _check_key(body.key)
     if key_error:
