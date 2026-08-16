@@ -1,3 +1,4 @@
+"""Render-ready FastAPI service for resolving short links."""
 from __future__ import annotations
 
 import asyncio
@@ -13,13 +14,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 
 # ============================================
-# IMPORT YOUR EXISTING BYPASS FUNCTIONS
+# IMPORT YOUR BYPASS FUNCTIONS
 # ============================================
 
 from earnlinks import bypass_earnlinks
 from shrink import bypass_shrinkme
 from sfl import bypass_sfl
-from lnbz import bypass_lnbz
+
+# Try both possible names for lnbz
+try:
+    from lnbz import bypass_lnbz
+except ImportError:
+    try:
+        from inbz import bypass_lnbz
+    except ImportError:
+        bypass_lnbz = None
+        print("⚠️ WARNING: lnbz/inbz module not found")
 
 # ============================================
 # CONFIGURATION
@@ -112,17 +122,18 @@ SUPPORTED_FAMILIES = {
         "handler": bypass_sfl,
         "sample": "https://sfl.gl/18PZXXI9"
     },
-    "lnbz": {
+}
+
+if bypass_lnbz:
+    SUPPORTED_FAMILIES["lnbz"] = {
         "domains": ["lnbz.la"],
         "patterns": [r"lnbz\.la"],
         "handler": bypass_lnbz,
         "sample": "https://lnbz.la/Hmvp6"
     }
-}
 
 
 def detect_family(url: str) -> str | None:
-    """Detect which shortlink family the URL belongs to."""
     url_lower = url.lower()
     for family, info in SUPPORTED_FAMILIES.items():
         for pattern in info["patterns"]:
@@ -132,7 +143,6 @@ def detect_family(url: str) -> str | None:
 
 
 def get_supported_list() -> list[dict]:
-    """Get list of supported families with details."""
     return [
         {
             "family": family,
@@ -327,6 +337,7 @@ def _payload(job_id: str) -> dict:
         "family": job.get("family"),
         "job_id": job_id,
         "took": round(time.time() - job["started"], 1),
+        "developer": "semy",
     }
     for key in ("bypassed", "error"):
         if key in job:
@@ -341,7 +352,6 @@ async def _worker(job_id: str, source: str, family: str, handler):
     job = JOBS[job_id]
     try:
         async with LOCK:
-            # Call the specific handler
             if asyncio.iscoroutinefunction(handler):
                 destination = await asyncio.wait_for(handler(source), timeout=TIMEOUT)
             else:
@@ -428,6 +438,8 @@ async def semybypass(url: str = Query(None, description="Shortlink URL to bypass
             "daily_remaining": get_remaining_requests(),
             "daily_limit": DAILY_LIMIT,
             "resets_at": get_reset_time().strftime("%I:%M %p IST"),
+            "expires_on": get_expiry_date(),
+            "developer": "semy",
         })
 
     # 3️⃣ CHECK: SUPPORTED LINK?
@@ -441,6 +453,7 @@ async def semybypass(url: str = Query(None, description="Shortlink URL to bypass
             "input_url": normalized_url,
             "supported_families": list(SUPPORTED_FAMILIES.keys()),
             "supported_domains": [d for info in SUPPORTED_FAMILIES.values() for d in info["domains"]],
+            "developer": "semy",
         }, status_code=400)
 
     # 4️⃣ CHECK: DAILY LIMIT REACHED → JSON
@@ -451,6 +464,7 @@ async def semybypass(url: str = Query(None, description="Shortlink URL to bypass
             "daily_limit": DAILY_LIMIT,
             "resets_at": get_reset_time().strftime("%I:%M %p IST"),
             "remaining": 0,
+            "developer": "semy",
         }, status_code=429)
 
     # 5️⃣ PROCESS: Increment & Bypass
