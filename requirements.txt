@@ -1,8 +1,9 @@
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
-curl_cffi==0.7.4
-pydantic==2.10.4
-fastapi==0.115.6
-pytz==2024.2
-requests==2.32.3
-beautifulsoup4==4.12.3
+fastapi
+uvicorn[standard]==0.24.0
+curl_cffi
+pydantic
+requests
+beautifulsoup4
+cachetools
+pytz
+python-multipart
